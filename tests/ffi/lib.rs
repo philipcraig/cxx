@@ -95,6 +95,8 @@ pub mod ffi {
         fn c_try_return_ref_rust_option(c: &C) -> Result<&Option<u8>>;
         fn c_try_return_rust_vec() -> Result<Vec<u8>>;
         fn c_try_return_ref_rust_vec(c: &C) -> Result<&Vec<u8>>;
+        fn c_try_return_rust_option() -> Result<Option<u8>>;
+        fn c_try_return_ref_rust_option(c: &C) -> Result<&Option<u8>>;
 
         fn get(self: &C) -> usize;
         fn set(self: &mut C, n: usize) -> usize;
@@ -130,6 +132,8 @@ pub mod ffi {
         fn r_return_ref_rust_option(shared: &Shared) -> &Option<u8>;
         fn r_return_rust_vec() -> Vec<u8>;
         fn r_return_ref_rust_vec(shared: &Shared) -> &Vec<u8>;
+        fn r_return_rust_option() -> Option<u8>;
+        fn r_return_ref_rust_option(shared: &Shared) -> &Option<u8>;
         fn r_return_identity(_: usize) -> usize;
         fn r_return_sum(_: usize, _: usize) -> usize;
         fn r_return_enum(n: u32) -> Enum;
@@ -148,6 +152,8 @@ pub mod ffi {
         fn r_take_ref_rust_option(v: &Option<u8>);
         fn r_take_rust_vec(v: Vec<u8>);
         fn r_take_ref_rust_vec(v: &Vec<u8>);
+        fn r_take_rust_option(v: Option<u8>);
+        fn r_take_ref_rust_option(v: &Option<u8>);
         fn r_take_enum(e: Enum);
 
         fn r_try_return_void() -> Result<()>;
@@ -243,6 +249,15 @@ fn r_return_ref_rust_vec(shared: &ffi::Shared) -> &Vec<u8> {
     unimplemented!()
 }
 
+fn r_return_rust_option() -> Option<u8> {
+    None
+}
+
+fn r_return_ref_rust_option(shared: &ffi::Shared) -> &Option<u8> {
+    let _ = shared;
+    unimplemented!()
+}
+
 fn r_return_identity(n: usize) -> usize {
     n
 }
@@ -315,6 +330,14 @@ fn r_take_rust_vec(v: Vec<u8>) {
 }
 
 fn r_take_ref_rust_vec(v: &Vec<u8>) {
+    let _ = v;
+}
+
+fn r_take_rust_option(v: Option<u8>) {
+    let _ = v;
+}
+
+fn r_take_ref_rust_option(v: &Option<u8>) {
     let _ = v;
 }
 
