@@ -31,6 +31,7 @@ size_t C::set2(size_t n) {
 size_t C::set_succeed(size_t n) { return this->set2(n); }
 
 size_t C::get_fail() { throw std::runtime_error("unimplemented"); }
+const std::optional<uint8_t> &C::get_o() const { return this->o; }
 
 const std::vector<uint8_t> &C::get_v() const { return this->v; }
 
@@ -63,6 +64,44 @@ rust::String c_return_rust_string() { return "2020"; }
 
 std::unique_ptr<std::string> c_return_unique_ptr_string() {
   return std::unique_ptr<std::string>(new std::string("2020"));
+}
+
+std::unique_ptr<std::optional<uint8_t>> c_return_unique_ptr_optional_u8() {
+  auto option =
+      std::unique_ptr<std::optional<uint8_t>>(new std::optional<uint8_t>());
+  option->emplace(86);
+  return option;
+}
+
+std::unique_ptr<std::optional<double>> c_return_unique_ptr_optional_f64() {
+  auto option =
+      std::unique_ptr<std::optional<double>>(new std::optional<double>());
+  option->emplace(86.0);
+  return option;
+}
+
+std::unique_ptr<std::optional<Shared>> c_return_unique_ptr_optional_shared() {
+  auto option =
+      std::unique_ptr<std::optional<Shared>>(new std::optional<Shared>());
+  option->emplace(Shared{1010});
+  return option;
+}
+
+std::unique_ptr<std::optional<C>> c_return_unique_ptr_optional_opaque() {
+  return std::unique_ptr<std::optional<C>>(new std::optional<C>());
+}
+
+const std::optional<uint8_t> &c_return_ref_optional(const C &c) {
+  return c.get_o();
+}
+
+rust::Option<uint8_t> c_return_rust_option() {
+  throw std::runtime_error("unimplemented");
+}
+
+const rust::Option<uint8_t> &c_return_ref_rust_option(const C &c) {
+  (void)c;
+  throw std::runtime_error("unimplemented");
 }
 
 std::unique_ptr<std::vector<uint8_t>> c_return_unique_ptr_vector_u8() {
@@ -182,6 +221,45 @@ void c_take_unique_ptr_string(std::unique_ptr<std::string> s) {
   }
 }
 
+void c_take_unique_ptr_optional_u8(std::unique_ptr<std::optional<uint8_t>> o) {
+  if (o->has_value()) {
+    cxx_test_suite_set_correct();
+  }
+}
+
+void c_take_unique_ptr_optional_f64(std::unique_ptr<std::optional<double>> o) {
+  if (o->has_value()) {
+    cxx_test_suite_set_correct();
+  }
+}
+
+void c_take_unique_ptr_optional_shared(
+    std::unique_ptr<std::optional<Shared>> o) {
+  if (o->has_value()) {
+    cxx_test_suite_set_correct();
+  }
+}
+
+void c_take_ref_optional(const std::optional<uint8_t> &o) {
+  if (o.has_value()) {
+    cxx_test_suite_set_correct();
+  }
+}
+
+void c_take_rust_option(rust::Option<uint8_t> o) { c_take_ref_rust_option(o); }
+
+void c_take_rust_option_shared(rust::Option<Shared> o) {
+  if (o.data()->z == 2021) {
+    cxx_test_suite_set_correct();
+  }
+}
+
+void c_take_ref_rust_option(const rust::Option<uint8_t> &o) {
+  if (*(o.data()) == 2021) {
+    cxx_test_suite_set_correct();
+  }
+}
+
 void c_take_unique_ptr_vector_u8(std::unique_ptr<std::vector<uint8_t>> v) {
   if (v->size() == 4) {
     cxx_test_suite_set_correct();
@@ -277,6 +355,15 @@ rust::String c_try_return_rust_string() { return c_return_rust_string(); }
 
 std::unique_ptr<std::string> c_try_return_unique_ptr_string() {
   return c_return_unique_ptr_string();
+}
+
+rust::Option<uint8_t> c_try_return_rust_option() {
+  throw std::runtime_error("unimplemented");
+}
+
+const rust::Option<uint8_t> &c_try_return_ref_rust_option(const C &c) {
+  (void)c;
+  throw std::runtime_error("unimplemented");
 }
 
 rust::Vec<uint8_t> c_try_return_rust_vec() {

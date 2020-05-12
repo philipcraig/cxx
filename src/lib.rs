@@ -45,7 +45,8 @@
 //!
 //! The FFI signatures are able to use native types from whichever side they
 //! please, such as Rust's `String` or C++'s `std::string`, Rust's `Box` or
-//! C++'s `std::unique_ptr`, Rust's `Vec` or C++'s `std::vector`, etc in any
+//! C++'s `std::unique_ptr`, Rust's `Vec` or C++'s `std::vector`,
+//! Rust's `Option` or C++'s `std::optional`, etc in any
 //! combination. CXX guarantees an ABI-compatible signature that both sides
 //! understand, based on builtin bindings for key standard library types to
 //! expose an idiomatic API on those types to the other language. For example
@@ -324,6 +325,8 @@
 //! <tr><td><a href="struct.UniquePtr.html">UniquePtr&lt;T&gt;</a></td><td>std::unique_ptr&lt;T&gt;</td><td><sup><i>cannot hold opaque Rust type</i></sup></td></tr>
 //! <tr><td>Vec&lt;T&gt;</td><td>rust::Vec&lt;T&gt;</td><td><sup><i>cannot hold opaque C++ type</i></sup></td></tr>
 //! <tr><td><a href="struct.CxxVector.html">CxxVector&lt;T&gt;</a></td><td>std::vector&lt;T&gt;</td><td><sup><i>cannot be passed by value, cannot hold opaque Rust type</i></sup></td></tr>
+//! <tr><td>Option&lt;T&gt;</td><td>rust::Option&lt;T&gt;</td><td><sup><i>cannot hold opaque C++ type</i></sup></td></tr>
+//! <tr><td><a href="struct.CxxOptional.html">CxxOptional&lt;T&gt;</a></td><td>std::optional&lt;T&gt;</td><td><sup><i>cannot be passed by value, cannot hold opaque Rust type</i></sup></td></tr>
 //! <tr><td>fn(T, U) -&gt; V</td><td>rust::Fn&lt;V(T, U)&gt;</td><td><sup><i>only passing from Rust to C++ is implemented so far</i></sup></td></tr>
 //! <tr><td>Result&lt;T&gt;</td><td>throw/catch</td><td><sup><i>allowed as return type only</i></sup></td></tr>
 //! </table>
@@ -372,6 +375,7 @@ extern crate link_cplusplus;
 #[macro_use]
 mod macros;
 
+mod cxx_optional;
 mod cxx_string;
 mod cxx_vector;
 mod exception;
@@ -379,6 +383,7 @@ mod extern_type;
 mod function;
 mod opaque;
 mod result;
+mod rust_option;
 mod rust_sliceu8;
 mod rust_str;
 mod rust_string;
@@ -389,6 +394,7 @@ mod unwind;
 #[cfg(not(no_export_symbols))]
 mod symbols;
 
+pub use crate::cxx_optional::CxxOptional;
 pub use crate::cxx_string::CxxString;
 pub use crate::cxx_vector::CxxVector;
 pub use crate::exception::Exception;
@@ -402,11 +408,13 @@ pub use cxxbridge_macro::type_id;
 // Not public API.
 #[doc(hidden)]
 pub mod private {
+    pub use crate::cxx_optional::OptionalElement;
     pub use crate::cxx_vector::VectorElement;
     pub use crate::extern_type::verify_extern_type;
     pub use crate::function::FatFunction;
     pub use crate::opaque::Opaque;
     pub use crate::result::{r#try, Result};
+    pub use crate::rust_option::RustOption;
     pub use crate::rust_sliceu8::RustSliceU8;
     pub use crate::rust_str::RustStr;
     pub use crate::rust_string::RustString;

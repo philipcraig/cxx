@@ -32,8 +32,10 @@ fn do_typecheck(cx: &mut Check) {
         match ty {
             Type::Ident(ident) => check_type_ident(cx, ident),
             Type::RustBox(ptr) => check_type_box(cx, ptr),
+            Type::RustOption(ty) => check_type_rust_option(cx, ty),
             Type::RustVec(ty) => check_type_rust_vec(cx, ty),
             Type::UniquePtr(ptr) => check_type_unique_ptr(cx, ptr),
+            Type::CxxOptional(ptr) => check_type_cxx_optional(cx, ptr),
             Type::CxxVector(ptr) => check_type_cxx_vector(cx, ptr),
             Type::Ref(ty) => check_type_ref(cx, ty),
             Type::Slice(ty) => check_type_slice(cx, ty),
@@ -83,6 +85,24 @@ fn check_type_box(cx: &mut Check, ptr: &Ty1) {
     cx.error(ptr, "unsupported target type of Box");
 }
 
+fn check_type_rust_option(cx: &mut Check, ty: &Ty1) {
+    if let Type::Ident(ident) = &ty.inner {
+        if cx.types.cxx.contains(ident) {
+            cx.error(ty, "Rust Option containing C++ type is not supported yet");
+            return;
+        }
+
+        match Atom::from(ident) {
+            None | Some(U8) | Some(U16) | Some(U32) | Some(U64) | Some(Usize) | Some(I8)
+            | Some(I16) | Some(I32) | Some(I64) | Some(Isize) | Some(F32) | Some(F64) => return,
+            Some(Bool) | Some(RustString) => { /* todo */ }
+            Some(CxxString) => {}
+        }
+    }
+
+    cx.error(ty, "unsupported element type of Option");
+}
+
 fn check_type_rust_vec(cx: &mut Check, ty: &Ty1) {
     if let Type::Ident(ident) = &ty.inner {
         if cx.types.cxx.contains(ident) {
@@ -111,11 +131,33 @@ fn check_type_unique_ptr(cx: &mut Check, ptr: &Ty1) {
             None | Some(CxxString) => return,
             _ => {}
         }
+    } else if let Type::CxxOptional(_) = &ptr.inner {
+        return;
     } else if let Type::CxxVector(_) = &ptr.inner {
         return;
     }
 
     cx.error(ptr, "unsupported unique_ptr target type");
+}
+
+fn check_type_cxx_optional(cx: &mut Check, ptr: &Ty1) {
+    if let Type::Ident(ident) = &ptr.inner {
+        if cx.types.rust.contains(ident) {
+            cx.error(
+                ptr,
+                "C++ optional containing a Rust type is not supported yet",
+            );
+        }
+
+        match Atom::from(ident) {
+            None | Some(U8) | Some(U16) | Some(U32) | Some(U64) | Some(Usize) | Some(I8)
+            | Some(I16) | Some(I32) | Some(I64) | Some(Isize) | Some(F32) | Some(F64) => return,
+            Some(CxxString) => { /* todo */ }
+            Some(Bool) | Some(RustString) => {}
+        }
+    }
+
+    cx.error(ptr, "unsupported optional target type");
 }
 
 fn check_type_cxx_vector(cx: &mut Check, ptr: &Ty1) {
@@ -305,7 +347,9 @@ fn check_multiple_arg_lifetimes(cx: &mut Check, efn: &ExternFn) {
 fn check_reserved_name(cx: &mut Check, ident: &Ident) {
     if ident == "Box"
         || ident == "UniquePtr"
+        || ident == "Option"
         || ident == "Vec"
+        || ident == "CxxOptional"
         || ident == "CxxVector"
         || Atom::from(ident).is_some()
     {
@@ -316,7 +360,7 @@ fn check_reserved_name(cx: &mut Check, ident: &Ident) {
 fn is_unsized(cx: &mut Check, ty: &Type) -> bool {
     let ident = match ty {
         Type::Ident(ident) => ident,
-        Type::CxxVector(_) | Type::Slice(_) | Type::Void(_) => return true,
+        Type::CxxOptional(_) | Type::CxxVector(_) | Type::Slice(_) | Type::Void(_) => return true,
         _ => return false,
     };
     ident == CxxString || cx.types.cxx.contains(ident) || cx.types.rust.contains(ident)
@@ -365,10 +409,12 @@ fn describe(cx: &mut Check, ty: &Type) -> String {
             }
         }
         Type::RustBox(_) => "Box".to_owned(),
+        Type::RustOption(_) => "Option".to_owned(),
         Type::RustVec(_) => "Vec".to_owned(),
         Type::UniquePtr(_) => "unique_ptr".to_owned(),
         Type::Ref(_) => "reference".to_owned(),
         Type::Str(_) => "&str".to_owned(),
+        Type::CxxOptional(_) => "C++ optional".to_owned(),
         Type::CxxVector(_) => "C++ vector".to_owned(),
         Type::Slice(_) => "slice".to_owned(),
         Type::SliceRefU8(_) => "&[u8]".to_owned(),
