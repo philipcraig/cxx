@@ -16,10 +16,12 @@ public:
   size_t set(size_t n);
   size_t get2() const;
   size_t set2(size_t n);
+  const std::optional<uint8_t> &get_o() const;
   const std::vector<uint8_t> &get_v() const;
 
 private:
   size_t n;
+  std::optional<uint8_t> o;
   std::vector<uint8_t> v;
 };
 
@@ -37,6 +39,13 @@ rust::Str c_return_str(const Shared &shared);
 rust::Slice<uint8_t> c_return_sliceu8(const Shared &shared);
 rust::String c_return_rust_string();
 std::unique_ptr<std::string> c_return_unique_ptr_string();
+std::unique_ptr<std::optional<uint8_t>> c_return_unique_ptr_optional_u8();
+std::unique_ptr<std::optional<double>> c_return_unique_ptr_optional_f64();
+std::unique_ptr<std::optional<Shared>> c_return_unique_ptr_optional_shared();
+std::unique_ptr<std::optional<C>> c_return_unique_ptr_optional_opaque();
+const std::optional<uint8_t> &c_return_ref_optional(const C &c);
+rust::Option<uint8_t> c_return_rust_option();
+const rust::Option<uint8_t> &c_return_ref_rust_option(const C &c);
 std::unique_ptr<std::vector<uint8_t>> c_return_unique_ptr_vector_u8();
 std::unique_ptr<std::vector<double>> c_return_unique_ptr_vector_f64();
 std::unique_ptr<std::vector<Shared>> c_return_unique_ptr_vector_shared();
@@ -58,6 +67,14 @@ void c_take_str(rust::Str s);
 void c_take_sliceu8(rust::Slice<uint8_t> s);
 void c_take_rust_string(rust::String s);
 void c_take_unique_ptr_string(std::unique_ptr<std::string> s);
+void c_take_unique_ptr_optional_u8(std::unique_ptr<std::optional<uint8_t>> o);
+void c_take_unique_ptr_optional_f64(std::unique_ptr<std::optional<double>> o);
+void c_take_unique_ptr_optional_shared(
+    std::unique_ptr<std::optional<Shared>> o);
+void c_take_ref_optional(const std::optional<uint8_t> &o);
+void c_take_rust_option(rust::Option<uint8_t> o);
+void c_take_rust_option_shared(rust::Option<Shared> o);
+void c_take_ref_rust_option(const rust::Option<uint8_t> &o);
 void c_take_unique_ptr_vector_u8(std::unique_ptr<std::vector<uint8_t>> v);
 void c_take_unique_ptr_vector_f64(std::unique_ptr<std::vector<double>> v);
 void c_take_unique_ptr_vector_shared(std::unique_ptr<std::vector<Shared>> v);
@@ -79,6 +96,8 @@ rust::Str c_try_return_str(rust::Str);
 rust::Slice<uint8_t> c_try_return_sliceu8(rust::Slice<uint8_t>);
 rust::String c_try_return_rust_string();
 std::unique_ptr<std::string> c_try_return_unique_ptr_string();
+rust::Option<uint8_t> c_try_return_rust_option();
+const rust::Option<uint8_t> &c_try_return_ref_rust_option(const C &c);
 rust::Vec<uint8_t> c_try_return_rust_vec();
 const rust::Vec<uint8_t> &c_try_return_ref_rust_vec(const C &c);
 

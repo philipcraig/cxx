@@ -30,7 +30,9 @@ impl<'a> Types<'a> {
                 Type::Ident(_) | Type::Str(_) | Type::Void(_) | Type::SliceRefU8(_) => {}
                 Type::RustBox(ty)
                 | Type::UniquePtr(ty)
+                | Type::CxxOptional(ty)
                 | Type::CxxVector(ty)
+                | Type::RustOption(ty)
                 | Type::RustVec(ty) => visit(all, &ty.inner),
                 Type::Ref(r) => visit(all, &r.inner),
                 Type::Slice(s) => visit(all, &s.inner),
@@ -128,7 +130,7 @@ impl<'a> Types<'a> {
                     Atom::from(ident) == Some(RustString)
                 }
             }
-            Type::RustVec(_) => true,
+            Type::RustOption(_) | Type::RustVec(_) => true,
             _ => false,
         }
     }
