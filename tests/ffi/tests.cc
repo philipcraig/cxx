@@ -28,9 +28,6 @@ size_t C::set2(size_t n) {
   return this->n;
 }
 
-size_t C::set_succeed(size_t n) { return this->set2(n); }
-
-size_t C::get_fail() { throw std::runtime_error("unimplemented"); }
 const std::optional<uint8_t> &C::get_o() const { return this->o; }
 
 const std::vector<uint8_t> &C::get_v() const { return this->v; }
