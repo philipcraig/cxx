@@ -1,3 +1,4 @@
+use crate::cxx_optional::{self, CxxOptional, OptionalElement};
 use crate::cxx_string::CxxString;
 use crate::cxx_vector::{self, CxxVector, VectorElement};
 use std::ffi::c_void;
@@ -206,6 +207,28 @@ unsafe impl UniquePtrTarget for CxxString {
     }
     unsafe fn __drop(mut repr: *mut c_void) {
         unique_ptr_std_string_drop(&mut repr);
+    }
+}
+
+unsafe impl<T> UniquePtrTarget for CxxOptional<T>
+where
+    T: OptionalElement + 'static,
+{
+    const __NAME: &'static dyn Display = &cxx_optional::TypeName::<T>::new();
+    fn __null() -> *mut c_void {
+        T::__unique_ptr_null()
+    }
+    unsafe fn __raw(raw: *mut Self) -> *mut c_void {
+        T::__unique_ptr_raw(raw)
+    }
+    unsafe fn __get(repr: *mut c_void) -> *const Self {
+        T::__unique_ptr_get(repr)
+    }
+    unsafe fn __release(repr: *mut c_void) -> *mut Self {
+        T::__unique_ptr_release(repr)
+    }
+    unsafe fn __drop(repr: *mut c_void) {
+        T::__unique_ptr_drop(repr);
     }
 }
 

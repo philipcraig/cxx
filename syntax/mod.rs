@@ -116,10 +116,12 @@ pub struct Variant {
 pub enum Type {
     Ident(Ident),
     RustBox(Box<Ty1>),
+    RustOption(Box<Ty1>),
     RustVec(Box<Ty1>),
     UniquePtr(Box<Ty1>),
     Ref(Box<Ref>),
     Str(Box<Ref>),
+    CxxOptional(Box<Ty1>),
     CxxVector(Box<Ty1>),
     Fn(Box<Signature>),
     Void(Span),

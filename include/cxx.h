@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <exception>
 #include <iosfwd>
+#include <optional>
 #include <string>
 #include <type_traits>
 #include <utility>
@@ -205,6 +206,43 @@ private:
   T *ptr;
 };
 #endif // CXXBRIDGE03_RUST_BOX
+
+#ifndef CXXBRIDGE03_RUST_OPTION
+#define CXXBRIDGE03_RUST_OPTION
+template <typename T>
+class Option final {
+public:
+  using value_type = T;
+
+  Option() noexcept;
+  Option(Option &&other) noexcept {
+    this->repr = other.repr;
+    new (&other) Option();
+  }
+  ~Option() noexcept { this->drop(); }
+
+  Option &operator=(Option &&other) noexcept {
+    if (this != &other) {
+      this->drop();
+      this->repr = other.repr;
+      new (&other) Option();
+    }
+    return *this;
+  }
+
+  bool has_value() const noexcept;
+  const T *data() const noexcept;
+
+  // Internal API only intended for the cxxbridge code generator.
+  Option(unsafe_bitcopy_t, const Option &bits) noexcept : repr(bits.repr) {}
+
+private:
+  void drop() noexcept;
+
+  // Size and alignment statically verified by rust_option.rs.
+  std::array<uintptr_t, 3> repr;
+};
+#endif // CXXBRIDGE03_RUST_OPTION
 
 #ifndef CXXBRIDGE03_RUST_VEC
 #define CXXBRIDGE03_RUST_VEC

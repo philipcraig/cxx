@@ -131,6 +131,7 @@ fn write_includes(out: &mut OutFile, types: &Types) {
             },
             Type::RustBox(_) => out.include.type_traits = true,
             Type::UniquePtr(_) => out.include.memory = true,
+            Type::CxxOptional(_) => out.include.optional = true,
             Type::CxxVector(_) => out.include.vector = true,
             Type::SliceRefU8(_) => out.include.cstdint = true,
             _ => {}
@@ -143,6 +144,7 @@ fn write_include_cxxbridge(out: &mut OutFile, apis: &[Api], types: &Types) {
     let mut needs_rust_str = false;
     let mut needs_rust_slice = false;
     let mut needs_rust_box = false;
+    let mut needs_rust_option = false;
     let mut needs_rust_vec = false;
     let mut needs_rust_fn = false;
     let mut needs_rust_isize = false;
@@ -151,6 +153,11 @@ fn write_include_cxxbridge(out: &mut OutFile, apis: &[Api], types: &Types) {
             Type::RustBox(_) => {
                 out.include.type_traits = true;
                 needs_rust_box = true;
+            }
+            Type::RustOption(_) => {
+                out.include.array = true;
+                out.include.type_traits = true;
+                needs_rust_option = true;
             }
             Type::RustVec(_) => {
                 out.include.array = true;
@@ -195,7 +202,7 @@ fn write_include_cxxbridge(out: &mut OutFile, apis: &[Api], types: &Types) {
                 }
                 for arg in &efn.args {
                     let bitcopy = match arg.ty {
-                        Type::RustVec(_) => true,
+                        Type::RustOption(_) | Type::RustVec(_) => true,
                         _ => arg.ty == RustString,
                     };
                     if bitcopy {
@@ -232,6 +239,7 @@ fn write_include_cxxbridge(out: &mut OutFile, apis: &[Api], types: &Types) {
         || needs_rust_str
         || needs_rust_slice
         || needs_rust_box
+        || needs_rust_option
         || needs_rust_vec
         || needs_rust_fn
         || needs_rust_error
@@ -253,6 +261,7 @@ fn write_include_cxxbridge(out: &mut OutFile, apis: &[Api], types: &Types) {
     write_header_section(out, needs_rust_str, "CXXBRIDGE03_RUST_STR");
     write_header_section(out, needs_rust_slice, "CXXBRIDGE03_RUST_SLICE");
     write_header_section(out, needs_rust_box, "CXXBRIDGE03_RUST_BOX");
+    write_header_section(out, needs_rust_option, "CXXBRIDGE03_RUST_OPTION");
     write_header_section(out, needs_rust_vec, "CXXBRIDGE03_RUST_VEC");
     write_header_section(out, needs_rust_fn, "CXXBRIDGE03_RUST_FN");
     write_header_section(out, needs_rust_error, "CXXBRIDGE03_RUST_ERROR");
@@ -429,6 +438,8 @@ fn write_cxx_function_shim(out: &mut OutFile, efn: &ExternFn, types: &Types) {
         }
         if arg.ty == RustString {
             write!(out, "const ");
+        } else if let Type::RustOption(_) = arg.ty {
+            write!(out, "const ");
         } else if let Type::RustVec(_) = arg.ty {
             write!(out, "const ");
         }
@@ -509,6 +520,9 @@ fn write_cxx_function_shim(out: &mut OutFile, efn: &ExternFn, types: &Types) {
                 "::rust::String(::rust::unsafe_bitcopy, *{})",
                 arg.ident,
             );
+        } else if let Type::RustOption(_) = arg.ty {
+            write_type(out, &arg.ty);
+            write!(out, "(::rust::unsafe_bitcopy, *{})", arg.ident);
         } else if let Type::RustVec(_) = arg.ty {
             write_type(out, &arg.ty);
             write!(out, "(::rust::unsafe_bitcopy, *{})", arg.ident);
@@ -833,7 +847,7 @@ fn write_extern_return_type_space(out: &mut OutFile, ty: &Option<Type>, types: &
 
 fn write_extern_arg(out: &mut OutFile, arg: &Var, types: &Types) {
     match &arg.ty {
-        Type::RustBox(ty) | Type::UniquePtr(ty) | Type::CxxVector(ty) => {
+        Type::RustBox(ty) | Type::UniquePtr(ty) | Type::CxxOptional(ty) | Type::CxxVector(ty) => {
             write_type_space(out, &ty.inner);
             write!(out, "*");
         }
@@ -858,6 +872,11 @@ fn write_type(out: &mut OutFile, ty: &Type) {
             write_type(out, &ty.inner);
             write!(out, ">");
         }
+        Type::RustOption(ty) => {
+            write!(out, "::rust::Option<");
+            write_type(out, &ty.inner);
+            write!(out, ">");
+        }
         Type::RustVec(ty) => {
             write!(out, "::rust::Vec<");
             write_type(out, &ty.inner);
@@ -866,6 +885,11 @@ fn write_type(out: &mut OutFile, ty: &Type) {
         Type::UniquePtr(ptr) => {
             write!(out, "::std::unique_ptr<");
             write_type(out, &ptr.inner);
+            write!(out, ">");
+        }
+        Type::CxxOptional(ty) => {
+            write!(out, "::std::optional<");
+            write_type(out, &ty.inner);
             write!(out, ">");
         }
         Type::CxxVector(ty) => {
@@ -940,7 +964,9 @@ fn write_space_after_type(out: &mut OutFile, ty: &Type) {
         | Type::RustBox(_)
         | Type::UniquePtr(_)
         | Type::Str(_)
+        | Type::CxxOptional(_)
         | Type::CxxVector(_)
+        | Type::RustOption(_)
         | Type::RustVec(_)
         | Type::SliceRefU8(_)
         | Type::Fn(_) => write!(out, " "),
@@ -950,7 +976,7 @@ fn write_space_after_type(out: &mut OutFile, ty: &Type) {
 }
 
 // Only called for legal referent types of unique_ptr and element types of
-// std::vector and Vec.
+// std::vector, std::optional, Vec and Option.
 fn to_typename(namespace: &Namespace, ty: &Type) -> String {
     match ty {
         Type::Ident(ident) => {
@@ -962,16 +988,20 @@ fn to_typename(namespace: &Namespace, ty: &Type) -> String {
             path += &ident.to_string();
             path
         }
+        Type::CxxOptional(ptr) => {
+            format!("::std::optional<{}>", to_typename(namespace, &ptr.inner))
+        }
         Type::CxxVector(ptr) => format!("::std::vector<{}>", to_typename(namespace, &ptr.inner)),
         _ => unreachable!(),
     }
 }
 
 // Only called for legal referent types of unique_ptr and element types of
-// std::vector and Vec.
+// std::vector, std::optional, Vec and Option.
 fn to_mangled(namespace: &Namespace, ty: &Type) -> String {
     match ty {
         Type::Ident(_) => to_typename(namespace, ty).replace("::", "$"),
+        Type::CxxOptional(ptr) => format!("std$optional${}", to_mangled(namespace, &ptr.inner)),
         Type::CxxVector(ptr) => format!("std$vector${}", to_mangled(namespace, &ptr.inner)),
         _ => unreachable!(),
     }
@@ -985,6 +1015,13 @@ fn write_generic_instantiations(out: &mut OutFile, types: &Types) {
                 out.next_section();
                 write_rust_box_extern(out, inner);
             }
+        } else if let Type::RustOption(ty) = ty {
+            if let Type::Ident(inner) = &ty.inner {
+                if Atom::from(inner).is_none() {
+                    out.next_section();
+                    write_rust_option_extern(out, inner);
+                }
+            }
         } else if let Type::RustVec(ty) = ty {
             if let Type::Ident(inner) = &ty.inner {
                 if Atom::from(inner).is_none() {
@@ -997,6 +1034,13 @@ fn write_generic_instantiations(out: &mut OutFile, types: &Types) {
                 if Atom::from(inner).is_none() && !types.aliases.contains_key(inner) {
                     out.next_section();
                     write_unique_ptr(out, inner, types);
+                }
+            }
+        } else if let Type::CxxOptional(ptr) = ty {
+            if let Type::Ident(inner) = &ptr.inner {
+                if Atom::from(inner).is_none() && !types.aliases.contains_key(inner) {
+                    out.next_section();
+                    write_cxx_optional(out, ty, inner, types);
                 }
             }
         } else if let Type::CxxVector(ptr) = ty {
@@ -1016,6 +1060,12 @@ fn write_generic_instantiations(out: &mut OutFile, types: &Types) {
         if let Type::RustBox(ty) = ty {
             if let Type::Ident(inner) = &ty.inner {
                 write_rust_box_impl(out, inner);
+            }
+        } else if let Type::RustOption(ty) = ty {
+            if let Type::Ident(inner) = &ty.inner {
+                if Atom::from(inner).is_none() {
+                    write_rust_option_impl(out, inner);
+                }
             }
         } else if let Type::RustVec(ty) = ty {
             if let Type::Ident(inner) = &ty.inner {
@@ -1051,6 +1101,36 @@ fn write_rust_box_extern(out: &mut OutFile, ident: &Ident) {
         instance, inner,
     );
     writeln!(out, "#endif // CXXBRIDGE03_RUST_BOX_{}", instance);
+}
+
+fn write_rust_option_extern(out: &mut OutFile, element: &Ident) {
+    let element = Type::Ident(element.clone());
+    let inner = to_typename(&out.namespace, &element);
+    let instance = to_mangled(&out.namespace, &element);
+
+    writeln!(out, "#ifndef CXXBRIDGE03_RUST_OPTION_{}", instance);
+    writeln!(out, "#define CXXBRIDGE03_RUST_OPTION_{}", instance);
+    writeln!(
+        out,
+        "void cxxbridge03$rust_option${}$new(const ::rust::Option<{}> *ptr) noexcept;",
+        instance, inner,
+    );
+    writeln!(
+        out,
+        "void cxxbridge03$rust_option${}$drop(::rust::Option<{}> *ptr) noexcept;",
+        instance, inner,
+    );
+    writeln!(
+        out,
+        "bool cxxbridge03$rust_option${}$has_value(const ::rust::Option<{}> *ptr) noexcept;",
+        instance, inner,
+    );
+    writeln!(
+        out,
+        "const {} *cxxbridge03$rust_option${}$data(const ::rust::Option<{0}> *ptr) noexcept;",
+        inner, instance,
+    );
+    writeln!(out, "#endif // CXXBRIDGE03_RUST_OPTION_{}", instance);
 }
 
 fn write_rust_vec_extern(out: &mut OutFile, element: &Ident) {
@@ -1108,6 +1188,48 @@ fn write_rust_box_impl(out: &mut OutFile, ident: &Ident) {
     writeln!(out, "}}");
 }
 
+fn write_rust_option_impl(out: &mut OutFile, element: &Ident) {
+    let element = Type::Ident(element.clone());
+    let inner = to_typename(&out.namespace, &element);
+    let instance = to_mangled(&out.namespace, &element);
+
+    writeln!(out, "template <>");
+    writeln!(out, "Option<{}>::Option() noexcept {{", inner);
+    writeln!(out, "  cxxbridge03$rust_option${}$new(this);", instance);
+    writeln!(out, "}}");
+
+    writeln!(out, "template <>");
+    writeln!(out, "void Option<{}>::drop() noexcept {{", inner);
+    writeln!(
+        out,
+        "  return cxxbridge03$rust_option${}$drop(this);",
+        instance,
+    );
+    writeln!(out, "}}");
+
+    writeln!(out, "template <>");
+    writeln!(out, "bool Option<{}>::has_value() const noexcept {{", inner);
+    writeln!(
+        out,
+        "  return cxxbridge03$rust_option${}$has_value(this);",
+        instance
+    );
+    writeln!(out, "}}");
+
+    writeln!(out, "template <>");
+    writeln!(
+        out,
+        "const {} *Option<{0}>::data() const noexcept {{",
+        inner
+    );
+    writeln!(
+        out,
+        "  return cxxbridge03$rust_option${}$data(this);",
+        instance,
+    );
+    writeln!(out, "}}");
+}
+
 fn write_rust_vec_impl(out: &mut OutFile, element: &Ident) {
     let element = Type::Ident(element.clone());
     let inner = to_typename(&out.namespace, &element);
@@ -1159,7 +1281,7 @@ fn write_unique_ptr(out: &mut OutFile, ident: &Ident, types: &Types) {
     writeln!(out, "#endif // CXXBRIDGE03_UNIQUE_PTR_{}", instance);
 }
 
-// Shared by UniquePtr<T> and UniquePtr<CxxVector<T>>.
+// Shared by UniquePtr<T>, UniquePtr<CxxVector<T>> and UniquePtr<CxxOptional<T>>.
 fn write_unique_ptr_common(out: &mut OutFile, ty: &Type, types: &Types) {
     out.include.utility = true;
     let inner = to_typename(&out.namespace, ty);
@@ -1228,6 +1350,33 @@ fn write_unique_ptr_common(out: &mut OutFile, ty: &Type, types: &Types) {
     );
     writeln!(out, "  ptr->~unique_ptr();");
     writeln!(out, "}}");
+}
+
+fn write_cxx_optional(out: &mut OutFile, optional_ty: &Type, element: &Ident, types: &Types) {
+    let element = Type::Ident(element.clone());
+    let inner = to_typename(&out.namespace, &element);
+    let instance = to_mangled(&out.namespace, &element);
+
+    writeln!(out, "#ifndef CXXBRIDGE03_OPTIONAL_{}", instance);
+    writeln!(out, "#define CXXBRIDGE03_OPTIONAL_{}", instance);
+    writeln!(
+        out,
+        "bool cxxbridge03$std$optional${}$has_value(const ::std::optional<{}> &s) noexcept {{",
+        instance, inner,
+    );
+    writeln!(out, "  return s.has_value();");
+    writeln!(out, "}}");
+    writeln!(
+        out,
+        "const {} *cxxbridge03$std$optional${}$get_unchecked(const ::std::optional<{}> &s) noexcept {{",
+        inner, instance, inner,
+    );
+    writeln!(out, "  return &(*s);");
+    writeln!(out, "}}");
+
+    write_unique_ptr_common(out, optional_ty, types);
+
+    writeln!(out, "#endif // CXXBRIDGE03_OPTIONAL_{}", instance);
 }
 
 fn write_cxx_vector(out: &mut OutFile, vector_ty: &Type, element: &Ident, types: &Types) {

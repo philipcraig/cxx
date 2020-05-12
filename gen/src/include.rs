@@ -35,6 +35,7 @@ pub struct Includes {
     pub cstring: bool,
     pub exception: bool,
     pub memory: bool,
+    pub optional: bool,
     pub string: bool,
     pub type_traits: bool,
     pub utility: bool,
@@ -84,6 +85,9 @@ impl Display for Includes {
         }
         if self.memory {
             writeln!(f, "#include <memory>")?;
+        }
+        if self.optional {
+            writeln!(f, "#include <optional>")?;
         }
         if self.string {
             writeln!(f, "#include <string>")?;
