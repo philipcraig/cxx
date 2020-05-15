@@ -261,7 +261,7 @@ fn write_include_cxxbridge(out: &mut OutFile, apis: &[Api], types: &Types) {
     include::write(out, needs_rust_str, "CXXBRIDGE03_RUST_STR");
     include::write(out, needs_rust_slice, "CXXBRIDGE03_RUST_SLICE");
     include::write(out, needs_rust_box, "CXXBRIDGE03_RUST_BOX");
-    include::write(out, needs_rust_vec, "CXXBRIDGE03_RUST_OPTION");
+    include::write(out, needs_rust_option, "CXXBRIDGE03_RUST_OPTION");
     include::write(out, needs_rust_vec, "CXXBRIDGE03_RUST_VEC");
     include::write(out, needs_rust_fn, "CXXBRIDGE03_RUST_FN");
     include::write(out, needs_rust_error, "CXXBRIDGE03_RUST_ERROR");
