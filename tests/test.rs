@@ -32,6 +32,7 @@ fn test_c_return() {
     assert_eq!(b"2020\0", ffi::c_return_sliceu8(&shared));
     assert_eq!("2020", ffi::c_return_rust_string());
     assert_eq!("2020", ffi::c_return_unique_ptr_string().to_str().unwrap());
+    assert_eq!(2020, ffi::c_return_unique_ptr_optional_u8().unwrap());
     assert_eq!(4, ffi::c_return_unique_ptr_vector_u8().len());
     assert_eq!(
         200_u8,
@@ -41,6 +42,7 @@ fn test_c_return() {
         200.5_f64,
         ffi::c_return_unique_ptr_vector_f64().into_iter().sum(),
     );
+    assert_eq!(2020, ffi::c_return_unique_ptr_optional_shared());
     assert_eq!(2, ffi::c_return_unique_ptr_vector_shared().len());
     assert_eq!(
         2021_usize,
@@ -96,6 +98,25 @@ fn test_c_take() {
     check!(ffi::c_take_unique_ptr_string(
         ffi::c_return_unique_ptr_string()
     ));
+    check!(ffi::c_take_unique_ptr_optional_u8(
+        ffi::c_return_unique_ptr_optional_u8()
+    ));
+    check!(ffi::c_take_unique_ptr_optional_f64(
+        ffi::c_return_unique_ptr_optional_f64()
+    ));
+    check!(ffi::c_take_unique_ptr_optional_shared(
+        ffi::c_return_unique_ptr_optional_shared()
+    ));
+    check!(ffi::c_take_ref_optional(
+        &ffi::c_return_unique_ptr_optional_u8()
+    ));
+    let test_option = Some(86_u8);
+    check!(ffi::c_take_rust_option(test_option.clone()));
+    check!(ffi::c_take_rust_option_shared(Some(ffi::Shared {
+        z: 1010
+    })));
+    check!(ffi::c_take_ref_rust_option(&test_option));
+    check!(ffi::c_take_ref_rust_option_copy(&test_option));
     check!(ffi::c_take_unique_ptr_vector_u8(
         ffi::c_return_unique_ptr_vector_u8()
     ));

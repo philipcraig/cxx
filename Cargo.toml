@@ -21,6 +21,7 @@ default = [] # c++11
 [dependencies]
 cxxbridge-macro = { version = "=0.3.4", path = "macro" }
 link-cplusplus = "1.0"
+unreachable = "1.0"
 
 [build-dependencies]
 cc = "1.0.52"

@@ -661,14 +661,14 @@ fn expand_rust_option(namespace: &Namespace, elem: &Ident) -> TokenStream {
     let link_prefix = format!("cxxbridge03$rust_option${}{}$", namespace, elem);
     let link_new = format!("{}new", link_prefix);
     let link_drop = format!("{}drop", link_prefix);
-    let link_has_value = format!("{}has_value", link_prefix);
-    let link_data = format!("{}data", link_prefix);
+    let link_is_some = format!("{}is_some", link_prefix);
+    let link_unwrap = format!("{}unwrap", link_prefix);
 
     let local_prefix = format_ident!("{}__option_", elem);
     let local_new = format_ident!("{}new", local_prefix);
     let local_drop = format_ident!("{}drop", local_prefix);
-    let local_has_value = format_ident!("{}has_value", local_prefix);
-    let local_data = format_ident!("{}data", local_prefix);
+    let local_is_some = format_ident!("{}is_some", local_prefix);
+    let local_unwrap = format_ident!("{}unwrap", local_prefix);
 
     let span = elem.span();
     quote_spanned! {span=>
@@ -683,14 +683,14 @@ fn expand_rust_option(namespace: &Namespace, elem: &Ident) -> TokenStream {
             ::std::ptr::drop_in_place(this);
         }
         #[doc(hidden)]
-        #[export_name = #link_has_value]
-        unsafe extern "C" fn #local_has_value(this: *const ::cxx::private::RustOption<#elem>) -> bool {
-            (*this).has_value()
+        #[export_name = #link_is_some]
+        unsafe extern "C" fn #local_is_some(this: *const ::cxx::private::RustOption<#elem>) -> bool {
+            (*this).is_some()
         }
         #[doc(hidden)]
-        #[export_name = #link_data]
-        unsafe extern "C" fn #local_data(this: *const ::cxx::private::RustOption<#elem>) -> *const #elem {
-            (*this).as_ptr()
+        #[export_name = #link_unwrap]
+        unsafe extern "C" fn #local_unwrap(this: *const ::cxx::private::RustOption<#elem>) -> *const #elem {
+            (*this).unwrap()
         }
     }
 }

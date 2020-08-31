@@ -180,17 +180,27 @@ public:
     return *this;
   }
 
-  bool has_value() const noexcept;
+  bool is_none() const noexcept;
   const T *data() const noexcept;
 
   // Internal API only intended for the cxxbridge code generator.
   Option(unsafe_bitcopy_t, const Option &bits) noexcept : repr(bits.repr) {}
 
+  // Repr is PRIVATE; must not be used other than by our generated code.
+  //
+  // Not necessarily ABI compatible with Option. Codegen will translate to
+  // cxx::rust_option::RustOption which matches this layout.
+  struct Repr {
+    const T *ptr;
+    bool is_none;
+  };
+  Option(Repr) noexcept;
+  explicit operator Repr() noexcept;
+
 private:
   void drop() noexcept;
 
-  // Size and alignment statically verified by rust_option.rs.
-  std::array<uintptr_t, 3> repr;
+  Repr repr;
 };
 #endif // CXXBRIDGE03_RUST_OPTION
 
@@ -469,6 +479,40 @@ T *Box<T>::into_raw() noexcept {
 template <typename T>
 Box<T>::Box() noexcept {}
 #endif // CXXBRIDGE03_RUST_BOX
+
+
+#ifndef CXXBRIDGE03_RUST_OPTION
+#define CXXBRIDGE03_RUST_OPTION
+template <typename T>
+<T>::Option(Option &&other) noexcept {
+  this->repr = other.repr;
+  new (&other) Option();
+}
+
+template <typename T>
+Option<T>::~Option() noexcept {
+  this->drop();
+}
+
+template <typename T>
+Option<T> &Option<T>::operator=(Option &&other) noexcept {
+  if (this != &other) {
+    this->drop();
+    this->repr = other.repr;
+    new (&other) Option();
+  }
+  return *this;
+}
+
+template <typename T>
+bool Option<T>::is_none() const noexcept {
+  return rep.is_none();
+}
+
+// Internal API only intended for the cxxbridge code generator.
+template <typename T>
+Option<T>::Option(unsafe_bitcopy_t, const Option &bits) noexcept : repr(bits.repr) {}
+#endif // CXXBRIDGE03_RUST_OPTION
 
 #ifndef CXXBRIDGE03_RUST_VEC
 #define CXXBRIDGE03_RUST_VEC

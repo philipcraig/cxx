@@ -1,3 +1,5 @@
+use unreachable::UncheckedOptionExt;
+
 #[repr(C)]
 pub struct RustOption<T> {
     repr: Option<T>,
@@ -34,5 +36,9 @@ impl<T> RustOption<T> {
 
     pub fn is_none(&self) -> bool {
         self.repr.is_none()
+    }
+
+    pub unsafe fn unwrap(&self) -> T {
+        self.repr.unchecked_unwrap()
     }
 }
